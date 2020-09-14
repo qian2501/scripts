@@ -12,10 +12,10 @@ OS=${OS%\"*}
 # Get package manager and package list from distro
 if [ $OS = "ubuntu" ]||[ $OS = "debian" ]; then
     PM=apt
-    PKGS="git zsh"
+    PKGS="git zsh gcc make"
 elif [ $OS = "centos" ]||[ $OS = "rhel" ]; then
     PM=yum
-    PKGS="git zsh"
+    PKGS="git zsh gcc make"
 fi
 
 # First update
