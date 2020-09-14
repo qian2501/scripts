@@ -41,15 +41,14 @@ cd /tmp/build/nginx-rtmp-module
 if [ ! -d /tmp/build/nginx-rtmp-module/nginx-rtmp-module-$NGINX_RTMP_MODULE_VERSION ]; then
     wget -O nginx-rtmp-module-$NGINX_RTMP_MODULE_VERSION.tar.gz https://github.com/arut/nginx-rtmp-module/archive/v$NGINX_RTMP_MODULE_VERSION.tar.gz
     tar -zxf nginx-rtmp-module-$NGINX_RTMP_MODULE_VERSION.tar.gz
+    # Patch for current version rtmp module compile warning
+    sed -i '169i /* fall through */' /tmp/build/nginx-rtmp-module/nginx-rtmp-module-$NGINX_RTMP_MODULE_VERSION/ngx_rtmp_eval.c
 fi
 
 # In case source download failed
 if [ ! -d /tmp/build/nginx/$NGINX_VERSION ]||[ ! -d /tmp/build/nginx-rtmp-module/nginx-rtmp-module-$NGINX_RTMP_MODULE_VERSION ]; then
     exit 0
 fi
-
-# Patch for current version rtmp module compile warning
-sed -i '169i /* fall through */' /tmp/build/nginx-rtmp-module/nginx-rtmp-module-$NGINX_RTMP_MODULE_VERSION/ngx_rtmp_eval.c
 
 # Build and install Nginx
 # The default puts everything under /usr/local/nginx, so it's needed to change explicitly.
