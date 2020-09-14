@@ -54,15 +54,12 @@ fi
 # The default puts everything under /usr/local/nginx, so it's needed to change explicitly.
 # Not just for order but to have it in the PATH
 echo $SEP
-if [ ! -d /sbin/nginx ]; then
-    mkdir /sbin/nginx
-fi
 if [ ! -d /etc/nginx ]; then
     mkdir /etc/nginx
 fi
 cd /tmp/build/nginx/$NGINX_VERSION
 ./configure \
-    --sbin-path=/sbin/nginx \
+    --sbin-path=/sbin \
     --conf-path=/etc/nginx/nginx.conf \
     --error-log-path=/var/log/nginx/error.log \
     --pid-path=/var/run/nginx/nginx.pid \
