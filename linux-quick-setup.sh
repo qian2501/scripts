@@ -1,5 +1,5 @@
 #!/bin/bash
-# Should execute without sudo
+# Should execute WITHOUT sudo
 
 # Var
 SEP=----------
@@ -9,13 +9,18 @@ OS=$(awk -F'=' '/^ID=/ {print tolower($2)}' /etc/*-release)
 # For CentOS the name will contain d-quotes, which need to be removed
 OS=${OS#*\"}
 OS=${OS%\"*}
+
 # Get package manager and package list from distro
+# Leave a space at the end for expansion
 if [ $OS = "ubuntu" ]||[ $OS = "debian" ]; then
     PM=apt
-    PKGS="git zsh gcc make"
+    PKGS="git zsh gcc make curl "
 elif [ $OS = "centos" ]||[ $OS = "rhel" ]; then
     PM=yum
-    PKGS="git zsh gcc make"
+    PKGS="git zsh gcc make curl "
+elif [ $OS = "opensuse-leap" ] then
+    PM=zypper
+    PKGS="git zsh gcc make curl "
 fi
 
 # First update
@@ -44,9 +49,7 @@ fi
 
 # Oh-my-zsh
 echo $SEP
-sh -c "$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 # Some tweaks on theme
 sed -i "s;ZSH_THEME.*;ZSH_THEME=\"agnoster\";g" .zshrc
-sed -i "s;SEGMENT_SEPARATOR=\$'\\\ue0b0';SEGMENT_SEPARATOR=\$'\\\u25e4';g" .oh-my-zsh/themes/agnoster.zsh-theme
-sed -i "s;echo -n \" %{%k%F{\$CURRENT_BG}%}\$SEGMENT_SEPARATOR\";echo -n \" %{%k%F{\$CURRENT_BG}%}\\\ue0b0\";g" .oh-my-zsh/themes/agnoster.zsh-theme
 sed -i "s;prompt_segment blue \$CURRENT_FG '%~';prompt_segment blue \$CURRENT_FG '%1~';g" .oh-my-zsh/themes/agnoster.zsh-theme
