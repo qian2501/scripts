@@ -80,3 +80,6 @@ sudo -Hiu postgres $PG_UPGRADE \
      --new-options "-c config_file=$PG_CONF_NEW"
 
 cp $PG_DATA_OLD/pg_hba.conf $PG_DATA_NEW
+
+# Start Postgresql
+systemctl start postgresql
