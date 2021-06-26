@@ -8,24 +8,29 @@ NGINX_RTMP_MODULE_VERSION="1.2.2"
 
 # Get distro name
 OS=$(awk -F'=' '/^ID=/ {print tolower($2)}' /etc/*-release)
-# For CentOS the name will contain d-quotes, which need to be removed
+# Some OS the name will contain d-quotes, which need to be removed
 OS=${OS#*\"}
 OS=${OS%\"*}
 
 # Get package manager from distro
 # Leave a space at the end for expansion
+# OSs other than Leap will exit fail, due to long untested
 if [ $OS = "ubuntu" ]||[ $OS = "debian" ]; then
     PM=apt
     PKGS="gcc make ca-certificates openssl libssl-dev libpcre3-dev "
     UNITFILE_PATH=""
+    exit 1
 elif [ $OS = "centos" ]||[ $OS = "rhel" ]; then
     PM=yum
     PKGS="gcc make ca-certificates openssl openssl-devel pcre-devel "
     UNITFILE_PATH=""
-elif [ $OS = "opensuse-leap" ] then
+    exit 1
+elif [ $OS = "opensuse-leap" ]; then
     PM=zypper
     PKGS="gcc make ca-certificates openssl openssl-devel pcre-devel "
     UNITFILE_PATH="/usr/lib/systemd/system"
+else
+    exit 1
 fi
 
 # Install required packages
@@ -53,7 +58,7 @@ fi
 
 # In case source download failed
 if [ ! -d /tmp/build/nginx/$NGINX_VERSION ]||[ ! -d /tmp/build/nginx-rtmp-module/nginx-rtmp-module-$NGINX_RTMP_MODULE_VERSION ]; then
-    exit 0
+    exit 1
 fi
 
 # Build and install Nginx
@@ -69,7 +74,7 @@ cd /tmp/build/nginx/$NGINX_VERSION
     --conf-path=/etc/nginx/nginx.conf \
     --http-log-path=/var/log/nginx/access.log \
     --error-log-path=/var/log/nginx/error.log \
-    --pid-path=/var/run/nginx/nginx.pid \
+    --pid-path=/var/run/nginx.pid \
     --lock-path=/var/lock/nginx/nginx.lock \
     --http-client-body-temp-path=/tmp/nginx-client-body \
     --with-http_ssl_module \

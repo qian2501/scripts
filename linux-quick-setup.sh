@@ -6,21 +6,26 @@ SEP=----------
 
 # Get distro name
 OS=$(awk -F'=' '/^ID=/ {print tolower($2)}' /etc/*-release)
-# For CentOS the name will contain d-quotes, which need to be removed
+# Some OS the name will contain d-quotes, which need to be removed
 OS=${OS#*\"}
 OS=${OS%\"*}
 
 # Get package manager and package list from distro
 # Leave a space at the end for expansion
+# OSs other than Leap will exit fail, due to long untested
 if [ $OS = "ubuntu" ]||[ $OS = "debian" ]; then
     PM=apt
     PKGS="git zsh gcc make curl "
+    exit 1
 elif [ $OS = "centos" ]||[ $OS = "rhel" ]; then
     PM=yum
     PKGS="git zsh gcc make curl "
-elif [ $OS = "opensuse-leap" ] then
+    exit 1
+elif [ $OS = "opensuse-leap" ]; then
     PM=zypper
     PKGS="git zsh gcc make curl "
+else
+    exit 1
 fi
 
 # First update
