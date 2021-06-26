@@ -69,7 +69,7 @@ cd /tmp/build/nginx/$NGINX_VERSION
     --conf-path=/etc/nginx/nginx.conf \
     --http-log-path=/var/log/nginx/access.log \
     --error-log-path=/var/log/nginx/error.log \
-    --pid-path=/var/run/nginx.pid \
+    --pid-path=/var/run/nginx/nginx.pid \
     --lock-path=/var/lock/nginx/nginx.lock \
     --http-client-body-temp-path=/tmp/nginx-client-body \
     --with-http_ssl_module \
@@ -91,4 +91,24 @@ rm -rf /tmp/build
 
 # Create unitfile
 touch $UNITFILE_PATH/nginx.service
-echo "" > $UNITFILE_PATH/nginx.service
+echo "[Unit]
+Description=The nginx HTTP and reverse proxy server
+After=network-online.target remote-fs.target nss-lookup.target
+Wants=network-online.target
+
+[Service]
+Type=idle
+PIDFile=/var/run/nginx/nginx.pid
+ExecStartPre=/usr/bin/rm -rf /var/run/nginx
+ExecStartPre=/usr/bin/mkdir /var/run/nginx
+ExecStartPre=/usr/bin/touch /var/run/nginx/nginx.pid
+ExecStartPre=/sbin/nginx -t
+ExecStart=/sbin/nginx -g \"daemon off;\"
+ExecReload=/bin/kill -s HUP \$MAINPID
+KillSignal=SIGQUIT
+TimeoutStopSec=5
+KillMode=mixed
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target" > $UNITFILE_PATH/nginx.service
