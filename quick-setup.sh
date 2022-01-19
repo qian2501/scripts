@@ -70,13 +70,15 @@ fi
 
 
 # New user
-adduser $USER
-echo "Make new user a sudoer?"
-echo -e "(Y/N):\c"
-read SUDO
-if [[ $SUDO == 'y' || $SUDO == 'Y' ]]; then
-    SUDO=1
-    sudo usermod -aG wheel $USER
+if [[ $DESK != 1 ]]; then
+    adduser $USER
+    echo "Make new user a sudoer?"
+    echo -e "(Y/N):\c"
+    read SUDO
+    if [[ $SUDO == 'y' || $SUDO == 'Y' ]]; then
+        SUDO=1
+        sudo usermod -aG wheel $USER
+    fi
 fi
 
 
