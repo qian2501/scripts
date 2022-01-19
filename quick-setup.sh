@@ -6,7 +6,7 @@ SEP=----------
 WEB=0
 VPN=0
 
-# Settings
+# Configuration
 USER=user
 EL_VERSION=8
 NVM_VERSION="v0.39.1"
