@@ -71,6 +71,13 @@ fi
 
 # New user
 adduser $USER
+echo "Make new user a sudoer?"
+echo -e "(Y/N):\c"
+read SUDO
+if [[ $SUDO == 'y' || $SUDO == 'Y' ]]; then
+    SUDO=1
+    sudo usermod -aG wheel $USER
+fi
 
 
 # Extra repos
@@ -100,6 +107,7 @@ sudo $PM install -y $PKGS
 # Non-standard installation
 # Oh-my-zsh
 echo $SEP
+# TODO install as new user
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 # Some tweaks on theme
 sed -i "s;ZSH_THEME.*;ZSH_THEME=\"agnoster\";g" .zshrc
@@ -114,6 +122,7 @@ if [[ $WEB == 1 ]]; then
     sudo mv composer.phar /usr/bin/composer
 
     # nvm
+    # TODO install as new user
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/$NVM_VERSION/install.sh | bash
 
     if [ -f ~/.zshrc ]; then
