@@ -1,10 +1,9 @@
 #!/bin/bash
-# Should execute WITH sudo
 
 # Var
 SEP=----------
-OLDVER=12
-NEWVER=13
+OLDVER=13
+NEWVER=14
 
 # Get distro name
 OS=$(awk -F'=' '/^ID=/ {print tolower($2)}' /etc/*-release)
@@ -12,9 +11,7 @@ OS=$(awk -F'=' '/^ID=/ {print tolower($2)}' /etc/*-release)
 OS=${OS#*\"}
 OS=${OS%\"*}
 
-# Get package manager from distro
-# Leave a space at the end for expansion
-# OSs other than Leap will exit fail, due to untested
+# Settings per distro
 if [ $OS = "ubuntu" ]||[ $OS = "debian" ]; then
     PM=apt
     PKGS=""
@@ -53,12 +50,12 @@ fi
 
 # Install required packages
 echo $SEP
-$PM update
-$PM install -y $PKGS
+sudo $PM update
+sudo $PM install -y $PKGS
 
 # Stop Postgresql
 echo $SEP
-systemctl stop postgresql
+sudo systemctl stop postgresql
 
 # Rename old data
 echo $SEP
@@ -66,8 +63,8 @@ sudo mv /var/lib/pgsql/data /var/lib/pgsql/data.old
 
 # Start Postgresql once for new data folder
 echo $SEP
-systemctl start postgresql
-systemctl stop postgresql
+sudo systemctl start postgresql
+sudo systemctl stop postgresql
 
 # Migrate
 echo $SEP
@@ -79,7 +76,7 @@ sudo -Hiu postgres $PG_UPGRADE \
      --old-options "-c config_file=$PG_CONF_OLD" \
      --new-options "-c config_file=$PG_CONF_NEW"
 
-cp $PG_DATA_OLD/pg_hba.conf $PG_DATA_NEW
+sudo cp $PG_DATA_OLD/pg_hba.conf $PG_DATA_NEW
 
 # Start Postgresql
-systemctl start postgresql
+sudo systemctl start postgresql

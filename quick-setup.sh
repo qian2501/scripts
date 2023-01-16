@@ -1,20 +1,19 @@
 #!/bin/bash
-# Should execute WITHOUT sudo
-
-# Var
-SEP=----------
-WEB=0
-VPN=0
 
 # Configuration
 USER=user
-EL_VERSION=8
-NVM_VERSION="v0.39.1"
-NODE_VERSION=14
+EL_VERSION=9
+PHP_VERSION=8.1
+NODE_VERSION=18
+
+
+# Var
+SEP=----------
+
 
 # Get distro name
 OS=$(awk -F'=' '/^ID=/ {print tolower($2)}' /etc/*-release)
-# Some OS will contain d-quotes, which need to be removed
+# Some OS contains d-quotes, which need to remove
 OS=${OS#*\"}
 OS=${OS%\"*}
 
@@ -23,7 +22,7 @@ OS=${OS%\"*}
 # OSs other than RHEL will exit fail
 if [ $OS = "rhel" ]; then
     PM=dnf
-    PKGS="vim git zsh util-linux-user policycoreutils-python-utils "
+    PKGS=""
 else
     exit 1
 fi
@@ -35,7 +34,7 @@ echo -e "(Y/N):\c"
 read WEB
 if [[ $WEB == 'y' || $WEB == 'Y' ]]; then
     WEB=1
-    PKGS=$PKGS"nginx postgresql-server npm php-ctype php-mbsting php-bcmath php-cli php-curl php-xml php-json php-tokenizer php-zip php-pdo php-pgsql python3-certbot python3-certbot-nginx "
+    PKGS=$PKGS" nginx php nodejs postgresql-server python3-certbot python3-certbot-nginx"
 fi
 
 echo "Is this machine for VPN?"
@@ -43,15 +42,22 @@ echo -e "(Y/N):\c"
 read VPN
 if [[ $VPN == 'y' || $VPN == 'Y' ]]; then
     VPN=1
-    PKGS=$PKGS"docker-ce docker-ce-cli containerd.io "
 fi
 
-echo "Is this machine for remote development?"
+echo "Is this machine for email server?"
+echo -e "(Y/N):\c"
+read MAIL
+if [[ $MAIL == 'y' || $MAIL == 'Y' ]]; then
+    MAIL=1
+    PKGS=$PKGS" postfix dovecot"
+fi
+
+echo "Is this machine for development?"
 echo -e "(Y/N):\c"
 read DEV
 if [[ $DEV == 'y' || $DEV == 'Y' ]]; then
     DEV=1
-    PKGS=$PKGS"powerline-fonts "
+    PKGS=$PKGS" powerline-fonts"
 fi
 
 echo "Is this machine for desktop?"
@@ -59,6 +65,12 @@ echo -e "(Y/N):\c"
 read DESK
 if [[ $DESK == 'y' || $DESK == 'Y' ]]; then
     DESK=1
+    PKGS=$PKGS" code" #google-chrome-stable" Exclude until Google fix SHA1 signature
+fi
+
+if [[ $WEB == 1 || $MAIL == 1 ]]; then
+    PKGS=$PKGS" php-fpm php-bcmath php-ctype php-curl php-dom php-fileinfo php-json php-mbstring php-openssl php-pcre php-pdo php-xml php-tokenizer php-pgsql \
+        php-session php-sockets php-filter php-intl php-iconv php-zip php-exif"
 fi
 
 
@@ -82,67 +94,71 @@ if [[ $DESK != 1 ]]; then
 fi
 
 
+# First update
+# "dnf update" and "apt update" behave differently
+echo $SEP
+sudo $PM update -y
+sudo $PM install -y vim git zsh util-linux-user yum-utils policycoreutils-python-utils
+
 # Extra repos
 if [ $OS = "rhel" ]; then
     echo $SEP
 
     # EPEL
-    sudo dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-$EL_VERSION.noarch.rpm
+    sudo dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-$EL_VERSION.noarch.rpm
+    crb enable
 
     # Docker-ce
+    # Currently not supported, podman is not an option yet, but can use centos version for the moment
     if [[ $VPN == 1 ]]; then
         sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+        # podman conflict with docker
+        sudo $PM remove -y podman buildah
+    fi
+
+    # Desktop Application
+    if [[ $DESK == 1 ]]; then
+        sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
+        sudo sh -c 'echo -e "[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc" > /etc/yum.repos.d/vscode.repo'
+        # NOTE Google is still using SHA1 for RPM signature, and GPG verification will fail on EL9
+        sudo sh -c 'echo -e "[google-chrome]\nname=google-chrome\nbaseurl=https://dl.google.com/linux/chrome/rpm/stable/\$basearch\nenabled=1\ngpgcheck=1\ngpgkey=https://dl-ssl.google.com/linux/linux_signing_key.pub" > /etc/yum.repos.d/google-chrome.repo'
     fi
 fi
 
-
-# First update
-# "dnf update" and "apt update" behave differently
-echo $SEP
-sudo $PM update -y
+# Version specific
+sudo $PM module enable -y php:$PHP_VERSION
+sudo $PM module enable -y nodejs:$NODE_VERSION
 
 # Install packages
 echo $SEP
+sudo $PM update -y
 sudo $PM install -y $PKGS
 
 
-# Non-standard installation
+# Non-PM installation
 # Oh-my-zsh
 echo $SEP
-# TODO install as new user
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 # Some tweaks on theme
 sed -i "s;ZSH_THEME.*;ZSH_THEME=\"agnoster\";g" .zshrc
 sed -i "s;prompt_segment blue \$CURRENT_FG '%~';prompt_segment blue \$CURRENT_FG '%1~';g" .oh-my-zsh/themes/agnoster.zsh-theme
 
+echo $SEP
+su -c 'cd /home/$USER;sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended' $USER
+# Some tweaks on theme
+sed -i "s;ZSH_THEME.*;ZSH_THEME=\"agnoster\";g" /home/$USER/.zshrc
+sed -i "s;prompt_segment blue \$CURRENT_FG '%~';prompt_segment blue \$CURRENT_FG '%1~';g" /home/$USER/.oh-my-zsh/themes/agnoster.zsh-theme
+
+
 if [[ $WEB == 1 ]]; then
     # Composer
     php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-    php -r "if (hash_file('sha384', 'composer-setup.php') === '906a84df04cea2aa72f40b5f787e49f22d4c2f19492ac310e8cba5b96ac8b64115ac402c8cd292b8a03482574915d1a8') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;"
     php composer-setup.php
     php -r "unlink('composer-setup.php');"
     sudo mv composer.phar /usr/bin/composer
-
-    # nvm
-    # TODO install as new user
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/$NVM_VERSION/install.sh | bash
-
-    if [ -f ~/.zshrc ]; then
-        . ~/.zshrc
-    fi
-
-    if [ -f ~/.bashrc ]; then
-        . ~/.bashrc
-    fi
-
-    nvm install $NODE_VERSION
-    nvm use $NODE_VERSION
 fi
 
 if [[ $DEV == 1 ]]; then
-    # code-server
-    curl -fsSL https://code-server.dev/install.sh | sh
-
     # Deployer
     curl -LO https://deployer.org/deployer.phar
     sudo mv deployer.phar /usr/bin/dep
@@ -151,14 +167,15 @@ fi
 
 
 # Services
+# Configuration
+# TODO
+
+
+# Auto-run
 if [[ $WEB == 1 ]]; then
     sudo systemctl enable --now nginx
     sudo systemctl enable --now php-fpm
     sudo postgresql-setup --initdb
     sudo systemctl enable --now postgresql
-fi
-
-if [[ $DEV == 1 ]]; then
-    sudo systemctl enable --now code-server@$USER
 fi
 
