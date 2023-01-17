@@ -11,6 +11,8 @@ DB_USER=user
 DB_NAME=database
 DOMAIN=
 
+EMAIL_ADDRESS=test@example.com
+
 
 # Var
 SEP=----------
@@ -33,7 +35,7 @@ else
 fi
 
 
-# Purpose specific packages
+# Purpose specific settings
 echo "Is this machine for web development or web server?"
 echo -e "(Y/N):\c"
 read WEB
@@ -54,7 +56,7 @@ echo -e "(Y/N):\c"
 read MAIL
 if [[ $MAIL == 'y' || $MAIL == 'Y' ]]; then
     MAIL=1
-    PKGS=$PKGS" postfix dovecot"
+    PKGS=$PKGS" postfix dovecot opendkim opendkim-tools opendmarc spamassassin"
 fi
 
 echo "Is this machine for development?"
@@ -103,7 +105,7 @@ fi
 # First update and basic packages
 echo $SEP
 sudo $PM update -y
-sudo $PM install -y vim git zsh util-linux-user yum-utils policycoreutils-python-utils
+sudo $PM install -y vim git zsh util-linux-user yum-utils policycoreutils-python-utils fail2ban
 
 # Extra repos
 if [ $OS = "rhel" ]; then
@@ -183,6 +185,9 @@ fi
 
 
 # Configuration
+# Fail2Ban
+# TODO
+
 if [[ $WEB == 1 || $MAIL == 1 ]]; then
     # User
     echo $SEP
@@ -212,7 +217,7 @@ if [[ $WEB == 1 || $MAIL == 1 ]]; then
         if [[ ! -z $DOMAIN ]]; then
             VHOST_CONF=$(echo $VHOST_CONF | sed "s;server_name _;server_name www.$DOMAIN;g")
         fi
-        VHOST_CONF=$(echo $VHOST_CONF | sed "s;root /path/to/site;root /home/site/;g")
+        VHOST_CONF=$(echo $VHOST_CONF | sed "s;root /path/to/site;root /home/site/path;g")
 
         CONF=$(echo $CONF | sed "s;#SCRIPTANCHOR;$VHOST_CONF \n#SCRIPTANCHOR;g")
     fi
@@ -222,7 +227,7 @@ if [[ $WEB == 1 || $MAIL == 1 ]]; then
         if [[ ! -z $DOMAIN ]]; then
             VHOST_CONF=$(echo $VHOST_CONF | sed "s;server_name _;server_name mail.$DOMAIN;g")
         fi
-        VHOST_CONF=$(echo $VHOST_CONF | sed "s;root /path/to/site;root /home/site/;g")
+        VHOST_CONF=$(echo $VHOST_CONF | sed "s;root /path/to/site;root /home/site/roundcubemail;g")
 
         CONF=$(echo $CONF | sed "s;#SCRIPTANCHOR;$VHOST_CONF \n#SCRIPTANCHOR;g")
     fi
@@ -258,20 +263,58 @@ if [[ $WEB == 1 || $MAIL == 1 ]]; then
         echo "!!Please replace your password for Roundcube DB after script finished!!"
     fi
 
-    # TODO
     if [[ $MAIL == 1 ]]; then
         # Postfix
+        sudo sed -i "s;#myhostname = virtual.domain.tld;myhostname = mail.$DOMAIN;g" /etc/postfix/main.cf
+        sudo sed -i "s;#mydomain = domain.tld;mydomain = $DOMAIN;g" /etc/postfix/main.cf
+        sudo sed -i "s;#myorigin = \$mydomain;myorigin = \$mydomain" /etc/postfix/main.cf
+        sudo sed -i "s;^mydestination = \$myhostname, localhost.\$mydomain, localhost;#mydestination = \$myhostname, localhost.\$mydomain, localhost;g" /etc/postfix/main.cf
+        sudo sed -i "s;#mydestination = \$myhostname, localhost.\$mydomain, localhost, \$mydomain;mydestination = \$myhostname, localhost.\$mydomain, localhost, \$mydomain;g" /etc/postfix/main.cf
 
         # Dovecot
+        sudo sed -i "s;#protocols = imap pop3 lmtp submission;protocols = imap pop3 lmtp;g" /etc/dovecot/dovecot.conf
+        sudo sed -i "s;#listen = *, ::;listen = *, ::;g" /etc/dovecot/dovecot.conf
+
+        # OpenDKIM
+        # TODO
 
     fi
 fi
+
+
+# SSL
+if [[ ($WEB == 1 || $MAIL == 1) && $DEV != 1 ]]; then
+    # Nginx
+    sudo certbot --nginx --non-interactive --agree-tos --domains www.$DOMAIN,mail.$DOMAIN --email $EMAIL_ADDRESS
+
+    # Postfix
+    echo "smtpd_use_tls = yes" | sudo tee -a /etc/postfix/main.cf
+    sudo sed -i "s;smtpd_tls_cert_file = /etc/pki/tls/certs/postfix.pem;smtpd_tls_cert_file = /etc/letsencrypt/live/$DOMAIN/fullchain.pem;g" /etc/postfix/main.cf
+    sudo sed -i "s;smtpd_tls_key_file = /etc/pki/tls/private/postfix.key;smtpd_tls_key_file = /etc/letsencrypt/live/$DOMAIN/privkey.pem;g" /etc/postfix/main.cf
+
+    # Dovecot
+    sudo sed -i "s;ssl_cert = </etc/pki/dovecot/certs/dovecot.pem;ssl_cert = </etc/letsencrypt/live/$DOMAIN/fullchain.pem;g" /etc/dovecot/conf.d/10-ssl.conf
+    sudo sed -i "s;ssl_key = </etc/pki/dovecot/private/dovecot.pem;ssl_key = </etc/letsencrypt/live/$DOMAIN/privkey.pem;g" /etc/dovecot/conf.d/10-ssl.conf
+fi
+
+
+# SELinux
+# TODO
+sudo setenforce 1
+sudo setsebool -P httpd_can_network_connect 1
 
 
 # Service
 if [[ $WEB == 1 ]]; then
     echo $SEP
     sudo systemctl enable --now nginx
+    sudo systemctl enable --now php-fpm
+    sudo systemctl enable --now postgresql
+fi
+
+if [[ $MAIL == 1 ]]; then
+    echo $SEP
+    sudo systemctl enable --now postfix
     sudo systemctl enable --now php-fpm
     sudo systemctl enable --now postgresql
 fi
