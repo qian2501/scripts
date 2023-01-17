@@ -198,7 +198,8 @@ if [[ $WEB == 1 || $MAIL == 1 ]]; then
 
     if [[ $MAIL == 1 ]]; then
         sudo tar -xf roundcubemail-$ROUNDCUBE_VERSION-complete.tar.gz -C /home/site
-        sudo mv roundcubemail-$ROUNDCUBE_VERSION roundcubemail
+        sudo mv /home/site/roundcubemail-$ROUNDCUBE_VERSION /home/site/roundcubemail
+        sudo mv /home/site/roundcubemail/config/config.inc.php.sample /home/site/roundcubemail/config/config.inc.php
         rm roundcubemail-$ROUNDCUBE_VERSION-complete.tar.gz
     fi
 
@@ -252,6 +253,9 @@ if [[ $WEB == 1 || $MAIL == 1 ]]; then
         sudo -Hiu postgres createuser -P roundcube
         sudo -Hiu postgres createdb -O roundcube -E UNICODE roundcubemail
         echo "host    roundcubemail   roundcube       127.0.0.1/32            md5" | sudo tee -a /var/lib/pgsql/data/pg_hba.conf > /dev/null
+        sudo sed -i "s;mysql://roundcube:pass@localhost/roundcubemail;pgsql://roundcube:pass@127.0.0.1/roundcubemail;g" /home/site/roundcubemail/config/config.inc.php
+
+        echo "!!Please replace your password for Roundcube DB after script finished!!"
     fi
 
     # TODO
