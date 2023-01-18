@@ -190,17 +190,19 @@ fi
 
 # Configuration
 if [[ $WEB == 1 || $MAIL == 1 ]]; then
-    # User
-    echo $SEP
-    sudo adduser deploy
-    sudo usermod -aG nginx deploy
-    sudo usermod -aG nginx $NEWUSER
+    if [[ $DESK != 1 ]]; then
+        # User
+        echo $SEP
+        sudo adduser deploy
+        sudo usermod -aG nginx deploy
+        sudo usermod -aG nginx $NEWUSER
 
-    # Directory
-    echo $SEP
-    sudo mkdir /home/site
-    sudo chown nginx:nginx /home/site
-    sudo chmod 775 /home/site
+        # Directory
+        echo $SEP
+        sudo mkdir /home/site
+        sudo chown nginx:nginx /home/site
+        sudo chmod 775 /home/site
+    fi
 
     if [[ $MAIL == 1 ]]; then
         sudo tar -xf roundcubemail-$ROUNDCUBE_VERSION-complete.tar.gz -C /home/site
@@ -222,7 +224,6 @@ if [[ $WEB == 1 || $MAIL == 1 ]]; then
         if [[ ! -z $DOMAIN ]]; then
             sed -i "s|server_name _|server_name www.$DOMAIN|g" templates/temp.conf
         fi
-        sed -i "s|root /path/to/site|root /home/site/path|g" templates/temp.conf
 
         echo -e "\n" | sudo tee -a /etc/nginx/nginx.conf > /dev/null
         cat templates/temp.conf | sudo tee -a /etc/nginx/nginx.conf > /dev/null
@@ -300,7 +301,7 @@ fi
 
 
 # SSL
-if [[ ($WEB == 1 || $MAIL == 1) && $DEV != 1 && DESK != 1 ]]; then
+if [[ ($WEB == 1 || $MAIL == 1) && $DEV != 1 && $DESK != 1 ]]; then
     # Nginx
     echo $SEP
     sudo certbot --nginx --non-interactive --agree-tos --domains www.$DOMAIN,mail.$DOMAIN --email $EMAIL_ADDRESS
