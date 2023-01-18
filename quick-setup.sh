@@ -179,7 +179,7 @@ fi
 
 if [[ $DESK == 1 ]]; then
     echo $SEP
-    sudo -u $NEWUSER git clone https://github.com/powerline/fonts.git --depth=1;fonts/install.sh;rm -rf fonts
+    sudo -u $NEWUSER sh -c 'cd $HOME;git clone https://github.com/powerline/fonts.git --depth=1;fonts/install.sh;rm -rf fonts'
 fi
 
 if [[ $MAIL == 1 ]]; then
@@ -293,6 +293,7 @@ if [[ $WEB == 1 || $MAIL == 1 ]]; then
 
         # OpenDKIM
         # TODO
+        sudo sed -i "s|Mode    v|Mode    sv|g" /etc/opendkim.conf
 
     fi
 fi
