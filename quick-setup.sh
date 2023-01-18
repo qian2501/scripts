@@ -6,12 +6,13 @@ PHP_VERSION=8.1
 NODE_VERSION=18
 ROUNDCUBE_VERSION=1.5.3
 
-USER=user
+SSH_PORT=22
+NEWUSER=user
 DB_USER=user
-DB_NAME=database
+DB_NAME=db
 DOMAIN=
 
-EMAIL_ADDRESS=test@example.com
+EMAIL_ADDRESS=someone@example.com
 
 
 # Var
@@ -25,11 +26,10 @@ OS=${OS#*\"}
 OS=${OS%\"*}
 
 # Get package manager and package list from distro
-# Leave a space at the end for append
-# OSs other than RHEL will exit fail
+# OSs other than RHEL will exit fail as not supported
 if [ $OS = "rhel" ]; then
     PM=dnf
-    PKGS=""
+    PKGS="fail2ban"
 else
     exit 1
 fi
@@ -64,7 +64,6 @@ echo -e "(Y/N):\c"
 read DEV
 if [[ $DEV == 'y' || $DEV == 'Y' ]]; then
     DEV=1
-    PKGS=$PKGS" powerline-fonts" # TODO it seems install through PM does not work
 fi
 
 echo "Is this machine for desktop?"
@@ -92,12 +91,12 @@ fi
 # New user
 if [[ $DESK != 1 ]]; then
     echo $SEP
-    sudo adduser $USER
+    sudo adduser $NEWUSER
     echo "Make new user a sudoer?"
     echo -e "(Y/N):\c"
     read SUDO
     if [[ $SUDO == 'y' || $SUDO == 'Y' ]]; then
-        sudo usermod -aG wheel $USER
+        sudo usermod -aG wheel $NEWUSER
     fi
 fi
 
@@ -105,7 +104,7 @@ fi
 # First update and basic packages
 echo $SEP
 sudo $PM update -y
-sudo $PM install -y vim git zsh util-linux-user yum-utils policycoreutils-python-utils fail2ban
+sudo $PM install -y vim git zsh util-linux-user yum-utils policycoreutils-python-utils
 
 # Extra repos
 if [ $OS = "rhel" ]; then
@@ -148,18 +147,18 @@ sudo $PM install -y $PKGS
 # Non-PM installation
 # Oh-my-zsh
 echo $SEP
-sudo sh -c 'cd /root;sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended' root
+sudo sh -c 'cd ~;sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended' root
 # Some tweaks on theme
 sudo sed -i "s;ZSH_THEME.*;ZSH_THEME=\"agnoster\";g" /root/.zshrc
 sudo sed -i "s;prompt_segment blue \$CURRENT_FG '%~';prompt_segment blue \$CURRENT_FG '%1~';g" /root/.oh-my-zsh/themes/agnoster.zsh-theme
 sudo chsh -s /bin/zsh root
 
 echo $SEP
-sudo sh -c 'cd /home/$USER;sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended' $USER
+sudo sh -c 'cd ~;sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended' $NEWUSER
 # Some tweaks on theme
-sudo sed -i "s;ZSH_THEME.*;ZSH_THEME=\"agnoster\";g" /home/$USER/.zshrc
-sudo sed -i "s;prompt_segment blue \$CURRENT_FG '%~';prompt_segment blue \$CURRENT_FG '%1~';g" /home/$USER/.oh-my-zsh/themes/agnoster.zsh-theme
-sudo chsh -s /bin/zsh $USER
+sudo sed -i "s;ZSH_THEME.*;ZSH_THEME=\"agnoster\";g" /home/$NEWUSER/.zshrc
+sudo sed -i "s;prompt_segment blue \$CURRENT_FG '%~';prompt_segment blue \$CURRENT_FG '%1~';g" /home/$NEWUSER/.oh-my-zsh/themes/agnoster.zsh-theme
+sudo chsh -s /bin/zsh $NEWUSER
 
 
 if [[ $WEB == 1 ]]; then
@@ -179,21 +178,26 @@ if [[ $DEV == 1 ]]; then
     sudo chmod +x /usr/bin/dep
 fi
 
+if [[ $DESK == 1 ]]; then
+    echo $SEP
+    git clone https://github.com/powerline/fonts.git --depth=1
+    fonts/install.sh
+    rm -rf fonts
+fi
+
 if [[ $MAIL == 1 ]]; then
+    echo $SEP
     curl -LO https://github.com/roundcube/roundcubemail/releases/download/$ROUNDCUBE_VERSION/roundcubemail-$ROUNDCUBE_VERSION-complete.tar.gz
 fi
 
 
 # Configuration
-# Fail2Ban
-# TODO
-
 if [[ $WEB == 1 || $MAIL == 1 ]]; then
     # User
     echo $SEP
     sudo adduser deploy
     sudo usermod -aG nginx deploy
-    sudo usermod -aG nginx $USER
+    sudo usermod -aG nginx $NEWUSER
 
     # Directory
     echo $SEP
@@ -210,29 +214,34 @@ if [[ $WEB == 1 || $MAIL == 1 ]]; then
 
     # Nginx
     echo $SEP
-    CONF=$(cat conf/nginx-main.conf)
+    mkdir conf
+    sh -c 'cd conf;curl -LO https://raw.githubusercontent.com/qian2501/scripts/master/conf/nginx-main.conf'
+    sudo cp conf/nginx-main.conf /etc/nginx/nginx.conf
 
     if [[ $WEB == 1 ]]; then
-        VHOST_CONF=$(cat conf/nginx-server.conf)
+        cp conf/nginx-server.conf conf/temp.conf
         if [[ ! -z $DOMAIN ]]; then
-            VHOST_CONF=$(echo $VHOST_CONF | sed "s;server_name _;server_name www.$DOMAIN;g")
+            sed -i "s;server_name _;server_name www.$DOMAIN;g" conf/temp.conf
         fi
-        VHOST_CONF=$(echo $VHOST_CONF | sed "s;root /path/to/site;root /home/site/path;g")
+        sed -i "s;root /path/to/site;root /home/site/path;g" conf/temp.conf
 
-        CONF=$(echo $CONF | sed "s;#SCRIPTANCHOR;$VHOST_CONF \n#SCRIPTANCHOR;g")
+        cat conf/temp.conf | sudo tee -a /etc/nginx/nginx.conf
+        rm -f conf/temp.conf
     fi
 
     if [[ $MAIL == 1 ]]; then
-        VHOST_CONF=$(cat conf/nginx-server.conf)
+        cp conf/nginx-server.conf conf/temp.conf
         if [[ ! -z $DOMAIN ]]; then
-            VHOST_CONF=$(echo $VHOST_CONF | sed "s;server_name _;server_name mail.$DOMAIN;g")
+            sed -i "s;server_name _;server_name mail.$DOMAIN;g" conf/temp.conf
         fi
-        VHOST_CONF=$(echo $VHOST_CONF | sed "s;root /path/to/site;root /home/site/roundcubemail;g")
+        sed -i "s;root /path/to/site;root /home/site/roundcubemail;g" conf/temp.conf
 
-        CONF=$(echo $CONF | sed "s;#SCRIPTANCHOR;$VHOST_CONF \n#SCRIPTANCHOR;g")
+        cat conf/temp.conf | sudo tee -a /etc/nginx/nginx.conf
+        rm -f conf/temp.conf
     fi
 
-    echo $CONF | sudo tee /etc/nginx/nginx.conf
+    echo -e "}\n" | sudo tee -a /etc/nginx/nginx.conf
+    rm -rf conf
 
     # PHP
     echo $SEP
@@ -246,34 +255,37 @@ if [[ $WEB == 1 || $MAIL == 1 ]]; then
     # PostgreSQL
     echo $SEP
     sudo postgresql-setup --initdb
-    sudo echo -e "\n" >> /var/lib/pgsql/data/pg_hba.conf
+    sudo systemctl start postgresql
 
     if [[ $WEB == 1 ]]; then
+        echo $SEP
         sudo -Hiu postgres createuser -P $DB_USER
         sudo -Hiu postgres createdb -O $DB_USER -E UNICODE $DB_NAME
         echo "host    $(printf "%-15s" $DB_NAME) $(printf "%-15s" $DB_USER) 127.0.0.1/32            md5" | sudo tee -a /var/lib/pgsql/data/pg_hba.conf > /dev/null
     fi
 
     if [[ $MAIL == 1 ]]; then
+        echo $SEP
         sudo -Hiu postgres createuser -P roundcube
         sudo -Hiu postgres createdb -O roundcube -E UNICODE roundcubemail
         echo "host    roundcubemail   roundcube       127.0.0.1/32            md5" | sudo tee -a /var/lib/pgsql/data/pg_hba.conf > /dev/null
         sudo sed -i "s;mysql://roundcube:pass@localhost/roundcubemail;pgsql://roundcube:pass@127.0.0.1/roundcubemail;g" /home/site/roundcubemail/config/config.inc.php
 
-        echo "!!Please replace your password for Roundcube DB after script finished!!"
+        echo "!!! Please replace your password for Roundcube DB after script finished !!!"
     fi
 
     if [[ $MAIL == 1 ]]; then
         # Postfix
+        echo $SEP
         sudo sed -i "s;#myhostname = virtual.domain.tld;myhostname = mail.$DOMAIN;g" /etc/postfix/main.cf
         sudo sed -i "s;#mydomain = domain.tld;mydomain = $DOMAIN;g" /etc/postfix/main.cf
         sudo sed -i "s;#myorigin = \$mydomain;myorigin = \$mydomain" /etc/postfix/main.cf
         sudo sed -i "s;^mydestination = \$myhostname, localhost.\$mydomain, localhost;#mydestination = \$myhostname, localhost.\$mydomain, localhost;g" /etc/postfix/main.cf
-        sudo sed -i "s;#mydestination = \$myhostname, localhost.\$mydomain, localhost, \$mydomain;mydestination = \$myhostname, localhost.\$mydomain, localhost, \$mydomain;g" /etc/postfix/main.cf
+        sudo sed -i "s;#mydestination = \$myhostname, localhost.\$mydomain, localhost, \$mydomain$;mydestination = \$myhostname, localhost.\$mydomain, localhost, \$mydomain;g" /etc/postfix/main.cf
 
         # Dovecot
         sudo sed -i "s;#protocols = imap pop3 lmtp submission;protocols = imap pop3 lmtp;g" /etc/dovecot/dovecot.conf
-        sudo sed -i "s;#listen = *, ::;listen = *, ::;g" /etc/dovecot/dovecot.conf
+        sudo sed -i "s;#listen = \*, ::;listen = \*, ::;g" /etc/dovecot/dovecot.conf
 
         # OpenDKIM
         # TODO
@@ -283,8 +295,9 @@ fi
 
 
 # SSL
-if [[ ($WEB == 1 || $MAIL == 1) && $DEV != 1 ]]; then
+if [[ ($WEB == 1 || $MAIL == 1) && $DEV != 1 && DESK != 1 ]]; then
     # Nginx
+    echo $SEP
     sudo certbot --nginx --non-interactive --agree-tos --domains www.$DOMAIN,mail.$DOMAIN --email $EMAIL_ADDRESS
 
     # Postfix
@@ -297,11 +310,28 @@ if [[ ($WEB == 1 || $MAIL == 1) && $DEV != 1 ]]; then
     sudo sed -i "s;ssl_key = </etc/pki/dovecot/private/dovecot.pem;ssl_key = </etc/letsencrypt/live/$DOMAIN/privkey.pem;g" /etc/dovecot/conf.d/10-ssl.conf
 fi
 
+if [[ $DESK != 1 ]]; then
+    sudo sed -i "s;Port 22;Port $SSH_PORT;g" /etc/ssh/sshd_config
+fi
 
+
+# Security
 # SELinux
 # TODO
+echo $SEP
 sudo setenforce 1
 sudo setsebool -P httpd_can_network_connect 1
+
+if [[ $DESK != 1 ]]; then
+    sudo semanage port -a -t ssh_port_t -p tcp $SSH_PORT
+    echo "!!! If you don't want to use port 22 anymore, remember to delete it from SELinux !!!"
+fi
+
+# Firewalld
+# TODO
+
+# Fail2Ban
+# TODO
 
 
 # Service
@@ -315,6 +345,5 @@ fi
 if [[ $MAIL == 1 ]]; then
     echo $SEP
     sudo systemctl enable --now postfix
-    sudo systemctl enable --now php-fpm
-    sudo systemctl enable --now postgresql
+    sudo systemctl enable --now dovecot
 fi
