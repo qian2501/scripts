@@ -112,7 +112,7 @@ if [ $OS = "rhel" ]; then
 
     # EPEL
     sudo dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-$EL_VERSION.noarch.rpm
-    crb enable
+    sudo crb enable
 
     # Docker-ce
     # Currently not supported, podman is not an option yet, but can use centos version for the moment
@@ -135,8 +135,7 @@ fi
 
 # Version specific
 echo $SEP
-sudo $PM module enable -y php:$PHP_VERSION
-sudo $PM module enable -y nodejs:$NODE_VERSION
+sudo $PM module enable -y php:$PHP_VERSION nodejs:$NODE_VERSION
 
 # Install packages
 echo $SEP
@@ -180,9 +179,7 @@ fi
 
 if [[ $DESK == 1 ]]; then
     echo $SEP
-    git clone https://github.com/powerline/fonts.git --depth=1
-    fonts/install.sh
-    rm -rf fonts
+    sudo -u $NEWUSER git clone https://github.com/powerline/fonts.git --depth=1;fonts/install.sh;rm -rf fonts
 fi
 
 if [[ $MAIL == 1 ]]; then
@@ -209,6 +206,7 @@ if [[ $WEB == 1 || $MAIL == 1 ]]; then
         sudo tar -xf roundcubemail-$ROUNDCUBE_VERSION-complete.tar.gz -C /home/site
         sudo mv /home/site/roundcubemail-$ROUNDCUBE_VERSION /home/site/roundcubemail
         sudo mv /home/site/roundcubemail/config/config.inc.php.sample /home/site/roundcubemail/config/config.inc.php
+        sudo chown -R nginx:nginx /home/site/roundcubemail
         rm roundcubemail-$ROUNDCUBE_VERSION-complete.tar.gz
     fi
 

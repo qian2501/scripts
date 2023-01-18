@@ -24,15 +24,15 @@ if [ $OS = "ubuntu" ]||[ $OS = "debian" ]; then
     PG_CONF_NEW=""
     exit 1
 elif [ $OS = "centos" ]||[ $OS = "rhel" ]; then
-    PM=yum
+    PM=dnf
     PKGS=""
     PG_UPGRADE=
-    PG_BIN_OLD=""
-    PG_DATA_OLD=""
-    PG_CONF_OLD=""
-    PG_BIN_NEW=""
-    PG_DATA_NEW=""
-    PG_CONF_NEW=""
+    PG_BIN_OLD="/usr/lib/postgresql$OLDVER/bin"
+    PG_DATA_OLD="/var/lib/pgsql/data.old"
+    PG_CONF_OLD="/var/lib/pgsql/data.old/postgresql.conf"
+    PG_BIN_NEW="/usr/lib/postgresql$NEWVER/bin"
+    PG_DATA_NEW="/var/lib/pgsql/data"
+    PG_CONF_NEW="/var/lib/pgsql/data/postgresql.conf"
     exit 1
 elif [ $OS = "opensuse-leap" ]; then
     PM=zypper
