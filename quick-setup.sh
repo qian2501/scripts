@@ -147,17 +147,17 @@ sudo $PM install -y $PKGS
 # Non-PM installation
 # Oh-my-zsh
 echo $SEP
-sudo sh -c 'cd ~;sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended' root
+sudo -u root sh -c 'cd $HOME;sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended'
 # Some tweaks on theme
-sudo sed -i "s;ZSH_THEME.*;ZSH_THEME=\"agnoster\";g" /root/.zshrc
-sudo sed -i "s;prompt_segment blue \$CURRENT_FG '%~';prompt_segment blue \$CURRENT_FG '%1~';g" /root/.oh-my-zsh/themes/agnoster.zsh-theme
+sudo sed -i "s|ZSH_THEME.*|ZSH_THEME=\"agnoster\"|g" /root/.zshrc
+sudo sed -i "s|prompt_segment blue \$CURRENT_FG '%~'|prompt_segment blue \$CURRENT_FG '%1~'|g" /root/.oh-my-zsh/themes/agnoster.zsh-theme
 sudo chsh -s /bin/zsh root
 
 echo $SEP
-sudo sh -c 'cd ~;sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended' $NEWUSER
+sudo -u $NEWUSER sh -c 'cd $HOME;sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended'
 # Some tweaks on theme
-sudo sed -i "s;ZSH_THEME.*;ZSH_THEME=\"agnoster\";g" /home/$NEWUSER/.zshrc
-sudo sed -i "s;prompt_segment blue \$CURRENT_FG '%~';prompt_segment blue \$CURRENT_FG '%1~';g" /home/$NEWUSER/.oh-my-zsh/themes/agnoster.zsh-theme
+sudo sed -i "s|ZSH_THEME.*|ZSH_THEME=\"agnoster\"|g" /home/$NEWUSER/.zshrc
+sudo sed -i "s|prompt_segment blue \$CURRENT_FG '%~'|prompt_segment blue \$CURRENT_FG '%1~'|g" /home/$NEWUSER/.oh-my-zsh/themes/agnoster.zsh-theme
 sudo chsh -s /bin/zsh $NEWUSER
 
 
@@ -214,78 +214,84 @@ if [[ $WEB == 1 || $MAIL == 1 ]]; then
 
     # Nginx
     echo $SEP
-    mkdir conf
-    sh -c 'cd conf;curl -LO https://raw.githubusercontent.com/qian2501/scripts/master/conf/nginx-main.conf'
-    sudo cp conf/nginx-main.conf /etc/nginx/nginx.conf
+    mkdir templates
+    sh -c 'cd templates;curl -LO https://raw.githubusercontent.com/qian2501/scripts/master/templates/nginx-main.conf'
+    sh -c 'cd templates;curl -LO https://raw.githubusercontent.com/qian2501/scripts/master/templates/nginx-server.conf'
+    sudo cp templates/nginx-main.conf /etc/nginx/nginx.conf
 
     if [[ $WEB == 1 ]]; then
-        cp conf/nginx-server.conf conf/temp.conf
+        cp templates/nginx-server.conf templates/temp.conf
         if [[ ! -z $DOMAIN ]]; then
-            sed -i "s;server_name _;server_name www.$DOMAIN;g" conf/temp.conf
+            sed -i "s|server_name _|server_name www.$DOMAIN|g" templates/temp.conf
         fi
-        sed -i "s;root /path/to/site;root /home/site/path;g" conf/temp.conf
+        sed -i "s|root /path/to/site|root /home/site/path|g" templates/temp.conf
 
-        cat conf/temp.conf | sudo tee -a /etc/nginx/nginx.conf
-        rm -f conf/temp.conf
+        echo -e "\n" | sudo tee -a /etc/nginx/nginx.conf > /dev/null
+        cat templates/temp.conf | sudo tee -a /etc/nginx/nginx.conf > /dev/null
+        rm -f templates/temp.conf
     fi
 
     if [[ $MAIL == 1 ]]; then
-        cp conf/nginx-server.conf conf/temp.conf
+        cp templates/nginx-server.conf templates/temp.conf
         if [[ ! -z $DOMAIN ]]; then
-            sed -i "s;server_name _;server_name mail.$DOMAIN;g" conf/temp.conf
+            sed -i "s|server_name _|server_name mail.$DOMAIN|g" templates/temp.conf
         fi
-        sed -i "s;root /path/to/site;root /home/site/roundcubemail;g" conf/temp.conf
+        sed -i "s|root /path/to/site|root /home/site/roundcubemail|g" templates/temp.conf
 
-        cat conf/temp.conf | sudo tee -a /etc/nginx/nginx.conf
-        rm -f conf/temp.conf
+        echo -e "\n" | sudo tee -a /etc/nginx/nginx.conf > /dev/null
+        cat templates/temp.conf | sudo tee -a /etc/nginx/nginx.conf > /dev/null
+        rm -f templates/temp.conf
     fi
 
-    echo -e "}\n" | sudo tee -a /etc/nginx/nginx.conf
-    rm -rf conf
+    echo -e "}\n" | sudo tee -a /etc/nginx/nginx.conf > /dev/null
+    rm -rf templates
 
     # PHP
     echo $SEP
-    sudo sed -i "s;user = apache;user = nginx;g" /etc/php-fpm.d/www.conf
-    sudo sed -i "s;group = apache;group = nginx;g" /etc/php-fpm.d/www.conf
-    sudo sed -i "s;\;listen.owner = nobody;listen.owner = nginx;g" /etc/php-fpm.d/www.conf
-    sudo sed -i "s;\;listen.group = nobody;listen.group = nginx;g" /etc/php-fpm.d/www.conf
-    sudo sed -i "s;\;listen.mode = 0660;listen.mode = 0660;g" /etc/php-fpm.d/www.conf
-    sudo sed -i "s;listen.acl_users = apache,nginx;\;listen.acl_users = apache,nginx;g" /etc/php-fpm.d/www.conf
+    sudo sed -i "s|user = apache|user = nginx|g" /etc/php-fpm.d/www.conf
+    sudo sed -i "s|group = apache|group = nginx|g" /etc/php-fpm.d/www.conf
+    sudo sed -i "s|listen = /run/php-fpm/www.sock|listen = 127.0.0.1:9000|g" /etc/php-fpm.d/www.conf
+    sudo sed -i "s|;listen.owner = nobody|listen.owner = nginx|g" /etc/php-fpm.d/www.conf
+    sudo sed -i "s|;listen.group = nobody|listen.group = nginx|g" /etc/php-fpm.d/www.conf
+    sudo sed -i "s|;listen.mode = 0660|listen.mode = 0660|g" /etc/php-fpm.d/www.conf
+    sudo sed -i "s|listen.acl_users = apache,nginx|;listen.acl_users = apache,nginx|g" /etc/php-fpm.d/www.conf
 
     # PostgreSQL
     echo $SEP
     sudo postgresql-setup --initdb
-    sudo systemctl start postgresql
+    sudo sed -i "s|host    all             all             127.0.0.1/32            ident|host    all             all             127.0.0.1/32            md5|g" /var/lib/pgsql/data/pg_hba.conf
 
     if [[ $WEB == 1 ]]; then
         echo $SEP
+        sudo systemctl start postgresql
         sudo -Hiu postgres createuser -P $DB_USER
         sudo -Hiu postgres createdb -O $DB_USER -E UNICODE $DB_NAME
-        echo "host    $(printf "%-15s" $DB_NAME) $(printf "%-15s" $DB_USER) 127.0.0.1/32            md5" | sudo tee -a /var/lib/pgsql/data/pg_hba.conf > /dev/null
+        sudo systemctl stop postgresql
     fi
 
     if [[ $MAIL == 1 ]]; then
         echo $SEP
+        sudo systemctl start postgresql
         sudo -Hiu postgres createuser -P roundcube
         sudo -Hiu postgres createdb -O roundcube -E UNICODE roundcubemail
-        echo "host    roundcubemail   roundcube       127.0.0.1/32            md5" | sudo tee -a /var/lib/pgsql/data/pg_hba.conf > /dev/null
-        sudo sed -i "s;mysql://roundcube:pass@localhost/roundcubemail;pgsql://roundcube:pass@127.0.0.1/roundcubemail;g" /home/site/roundcubemail/config/config.inc.php
+        sudo systemctl stop postgresql
+        sudo sed -i "s|mysql://roundcube:pass@localhost/roundcubemail|pgsql://roundcube:pass@127.0.0.1/roundcubemail|g" /home/site/roundcubemail/config/config.inc.php
 
-        echo "!!! Please replace your password for Roundcube DB after script finished !!!"
+        echo "!!! Please replace your password for Roundcube DB and run \"bin/initdb.sh --dir=SQL\" after script finished !!!"
     fi
 
     if [[ $MAIL == 1 ]]; then
         # Postfix
         echo $SEP
-        sudo sed -i "s;#myhostname = virtual.domain.tld;myhostname = mail.$DOMAIN;g" /etc/postfix/main.cf
-        sudo sed -i "s;#mydomain = domain.tld;mydomain = $DOMAIN;g" /etc/postfix/main.cf
-        sudo sed -i "s;#myorigin = \$mydomain;myorigin = \$mydomain" /etc/postfix/main.cf
-        sudo sed -i "s;^mydestination = \$myhostname, localhost.\$mydomain, localhost;#mydestination = \$myhostname, localhost.\$mydomain, localhost;g" /etc/postfix/main.cf
-        sudo sed -i "s;#mydestination = \$myhostname, localhost.\$mydomain, localhost, \$mydomain$;mydestination = \$myhostname, localhost.\$mydomain, localhost, \$mydomain;g" /etc/postfix/main.cf
+        sudo sed -i "s|#myhostname = virtual.domain.tld|myhostname = mail.$DOMAIN|g" /etc/postfix/main.cf
+        sudo sed -i "s|#mydomain = domain.tld|mydomain = $DOMAIN|g" /etc/postfix/main.cf
+        sudo sed -i "s|#myorigin = \$mydomain|myorigin = \$mydomain|g" /etc/postfix/main.cf
+        sudo sed -i "s|^mydestination = \$myhostname, localhost.\$mydomain, localhost|#mydestination = \$myhostname, localhost.\$mydomain, localhost|g" /etc/postfix/main.cf
+        sudo sed -i "s|#mydestination = \$myhostname, localhost.\$mydomain, localhost, \$mydomain$|mydestination = \$myhostname, localhost.\$mydomain, localhost, \$mydomain|g" /etc/postfix/main.cf
 
         # Dovecot
-        sudo sed -i "s;#protocols = imap pop3 lmtp submission;protocols = imap pop3 lmtp;g" /etc/dovecot/dovecot.conf
-        sudo sed -i "s;#listen = \*, ::;listen = \*, ::;g" /etc/dovecot/dovecot.conf
+        sudo sed -i "s|#protocols = imap pop3 lmtp submission|protocols = imap pop3 lmtp|g" /etc/dovecot/dovecot.conf
+        sudo sed -i "s|#listen = \*, ::|listen = \*, ::|g" /etc/dovecot/dovecot.conf
 
         # OpenDKIM
         # TODO
@@ -302,16 +308,16 @@ if [[ ($WEB == 1 || $MAIL == 1) && $DEV != 1 && DESK != 1 ]]; then
 
     # Postfix
     echo "smtpd_use_tls = yes" | sudo tee -a /etc/postfix/main.cf
-    sudo sed -i "s;smtpd_tls_cert_file = /etc/pki/tls/certs/postfix.pem;smtpd_tls_cert_file = /etc/letsencrypt/live/$DOMAIN/fullchain.pem;g" /etc/postfix/main.cf
-    sudo sed -i "s;smtpd_tls_key_file = /etc/pki/tls/private/postfix.key;smtpd_tls_key_file = /etc/letsencrypt/live/$DOMAIN/privkey.pem;g" /etc/postfix/main.cf
+    sudo sed -i "s|smtpd_tls_cert_file = /etc/pki/tls/certs/postfix.pem|smtpd_tls_cert_file = /etc/letsencrypt/live/$DOMAIN/fullchain.pem|g" /etc/postfix/main.cf
+    sudo sed -i "s|smtpd_tls_key_file = /etc/pki/tls/private/postfix.key|smtpd_tls_key_file = /etc/letsencrypt/live/$DOMAIN/privkey.pem|g" /etc/postfix/main.cf
 
     # Dovecot
-    sudo sed -i "s;ssl_cert = </etc/pki/dovecot/certs/dovecot.pem;ssl_cert = </etc/letsencrypt/live/$DOMAIN/fullchain.pem;g" /etc/dovecot/conf.d/10-ssl.conf
-    sudo sed -i "s;ssl_key = </etc/pki/dovecot/private/dovecot.pem;ssl_key = </etc/letsencrypt/live/$DOMAIN/privkey.pem;g" /etc/dovecot/conf.d/10-ssl.conf
+    sudo sed -i "s|ssl_cert = </etc/pki/dovecot/certs/dovecot.pem|ssl_cert = </etc/letsencrypt/live/$DOMAIN/fullchain.pem|g" /etc/dovecot/conf.d/10-ssl.conf
+    sudo sed -i "s|ssl_key = </etc/pki/dovecot/private/dovecot.pem|ssl_key = </etc/letsencrypt/live/$DOMAIN/privkey.pem|g" /etc/dovecot/conf.d/10-ssl.conf
 fi
 
 if [[ $DESK != 1 ]]; then
-    sudo sed -i "s;Port 22;Port $SSH_PORT;g" /etc/ssh/sshd_config
+    sudo sed -i "s|Port 22|Port $SSH_PORT|g" /etc/ssh/sshd_config
 fi
 
 
@@ -321,6 +327,12 @@ fi
 echo $SEP
 sudo setenforce 1
 sudo setsebool -P httpd_can_network_connect 1
+
+if [[ $MAIL == 1 ]]; then
+    sudo chcon -Rt httpd_sys_content_t /home/site/roundcubemail
+    sudo chcon -Rt httpd_sys_rw_content_t /home/site/roundcubemail/temp
+    sudo chcon -Rt httpd_sys_rw_content_t /home/site/roundcubemail/logs
+fi
 
 if [[ $DESK != 1 ]]; then
     sudo semanage port -a -t ssh_port_t -p tcp $SSH_PORT
