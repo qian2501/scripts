@@ -314,9 +314,9 @@ fi
 
 # SSL
 if [[ ($WEB == 1 || $MAIL == 1) && $DEV != 1 && $DESK != 1 ]]; then
-    # Nginx
     echo $SEP
-    sudo certbot --nginx --non-interactive --agree-tos --domains www.$DOMAIN,mail.$DOMAIN --email $EMAIL_ADDRESS
+    sudo systemctl stop nginx
+    sudo certbot --nginx --non-interactive --agree-tos  --standalone --domains www.$DOMAIN,mail.$DOMAIN --email $EMAIL_ADDRESS
 
     # Postfix
     echo "smtpd_use_tls = yes" | sudo tee -a /etc/postfix/main.cf
