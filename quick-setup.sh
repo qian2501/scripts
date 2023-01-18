@@ -317,6 +317,7 @@ if [[ ($WEB == 1 || $MAIL == 1) && $DEV != 1 && $DESK != 1 ]]; then
     echo $SEP
     sudo systemctl restart nginx
     sudo certbot --nginx --non-interactive --agree-tos --domains www.$DOMAIN,mail.$DOMAIN --email $EMAIL_ADDRESS
+    sudo systemctl stop nginx
 
     # Postfix
     echo "smtpd_use_tls = yes" | sudo tee -a /etc/postfix/main.cf > /dev/null
@@ -330,6 +331,21 @@ fi
 
 if [[ $DESK != 1 ]]; then
     sudo sed -i "s|Port 22|Port $SSH_PORT|g" /etc/ssh/sshd_config
+fi
+
+
+# Stop all before further config
+if [[ $WEB == 1 ]]; then
+    echo $SEP
+    sudo systemctl stop nginx
+    sudo systemctl stop php-fpm
+    sudo systemctl stop postgresql
+fi
+
+if [[ $MAIL == 1 ]]; then
+    echo $SEP
+    sudo systemctl stop postfix
+    sudo systemctl stop dovecot
 fi
 
 
@@ -370,4 +386,8 @@ if [[ $MAIL == 1 ]]; then
     echo $SEP
     sudo systemctl enable --now postfix
     sudo systemctl enable --now dovecot
+fi
+
+if [[ $DESK != 1 ]]; then
+    sudo systemctl restart sshd
 fi
