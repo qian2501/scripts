@@ -11,6 +11,7 @@ NEWUSER=user
 DB_USER=user
 DB_NAME=db
 DOMAIN=
+SWAP_SIZE=1048576
 
 EMAIL_ADDRESS=someone@example.com
 
@@ -77,6 +78,17 @@ fi
 if [[ $WEB == 1 || $MAIL == 1 ]]; then
     PKGS=$PKGS" php-fpm php-bcmath php-ctype php-curl php-dom php-fileinfo php-json php-mbstring php-openssl php-pcre php-pdo php-xml php-tokenizer php-pgsql \
         php-session php-sockets php-filter php-intl php-iconv php-zip php-exif"
+fi
+
+
+# Create swapfile
+if [[ $SWAP_SIZE != 0 ]]; then
+    sudo dd if=/dev/zero of=/swapfile bs=1024 count=$SWAP_SIZE
+    sudo mkswap /swapfile
+    sudo chmod 0600 /swapfile
+    echo "/swapfile          swap            swap    defaults        0       0" | sudo tee -a /etc/fstab > /dev/null
+    sudo systemctl daemon-reload
+    sudo swapon /swapfile
 fi
 
 
