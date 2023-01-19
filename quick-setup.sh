@@ -321,12 +321,12 @@ if [[ ($WEB == 1 || $MAIL == 1) && $DEV != 1 && $DESK != 1 ]]; then
 
     # Postfix
     echo "smtpd_use_tls = yes" | sudo tee -a /etc/postfix/main.cf > /dev/null
-    sudo sed -i "s|smtpd_tls_cert_file = /etc/pki/tls/certs/postfix.pem|smtpd_tls_cert_file = /etc/letsencrypt/live/$DOMAIN/fullchain.pem|g" /etc/postfix/main.cf
-    sudo sed -i "s|smtpd_tls_key_file = /etc/pki/tls/private/postfix.key|smtpd_tls_key_file = /etc/letsencrypt/live/$DOMAIN/privkey.pem|g" /etc/postfix/main.cf
+    sudo sed -i "s|smtpd_tls_cert_file = /etc/pki/tls/certs/postfix.pem|smtpd_tls_cert_file = /etc/letsencrypt/live/mail.$DOMAIN/fullchain.pem|g" /etc/postfix/main.cf
+    sudo sed -i "s|smtpd_tls_key_file = /etc/pki/tls/private/postfix.key|smtpd_tls_key_file = /etc/letsencrypt/live/mail.$DOMAIN/privkey.pem|g" /etc/postfix/main.cf
 
     # Dovecot
-    sudo sed -i "s|ssl_cert = </etc/pki/dovecot/certs/dovecot.pem|ssl_cert = </etc/letsencrypt/live/$DOMAIN/fullchain.pem|g" /etc/dovecot/conf.d/10-ssl.conf
-    sudo sed -i "s|ssl_key = </etc/pki/dovecot/private/dovecot.pem|ssl_key = </etc/letsencrypt/live/$DOMAIN/privkey.pem|g" /etc/dovecot/conf.d/10-ssl.conf
+    sudo sed -i "s|ssl_cert = </etc/pki/dovecot/certs/dovecot.pem|ssl_cert = </etc/letsencrypt/live/mail.$DOMAIN/fullchain.pem|g" /etc/dovecot/conf.d/10-ssl.conf
+    sudo sed -i "s|ssl_key = </etc/pki/dovecot/private/dovecot.pem|ssl_key = </etc/letsencrypt/live/mail.$DOMAIN/privkey.pem|g" /etc/dovecot/conf.d/10-ssl.conf
 fi
 
 if [[ $DESK != 1 ]]; then
