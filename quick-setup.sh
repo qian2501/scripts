@@ -81,8 +81,9 @@ if [[ $WEB == 1 || $MAIL == 1 ]]; then
 fi
 
 
-# Create swapfile
+# Swapfile
 if [[ $SWAP_SIZE != 0 ]]; then
+    echo $SEP
     sudo dd if=/dev/zero of=/swapfile bs=1024 count=$SWAP_SIZE
     sudo mkswap /swapfile
     sudo chmod 0600 /swapfile
@@ -321,12 +322,12 @@ if [[ ($WEB == 1 || $MAIL == 1) && $DEV != 1 && $DESK != 1 ]]; then
 
     # Postfix
     echo "smtpd_use_tls = yes" | sudo tee -a /etc/postfix/main.cf > /dev/null
-    sudo sed -i "s|smtpd_tls_cert_file = /etc/pki/tls/certs/postfix.pem|smtpd_tls_cert_file = /etc/letsencrypt/live/mail.$DOMAIN/fullchain.pem|g" /etc/postfix/main.cf
-    sudo sed -i "s|smtpd_tls_key_file = /etc/pki/tls/private/postfix.key|smtpd_tls_key_file = /etc/letsencrypt/live/mail.$DOMAIN/privkey.pem|g" /etc/postfix/main.cf
+    sudo sed -i "s|smtpd_tls_cert_file = /etc/pki/tls/certs/postfix.pem|smtpd_tls_cert_file = /etc/letsencrypt/live/www.$DOMAIN/fullchain.pem|g" /etc/postfix/main.cf
+    sudo sed -i "s|smtpd_tls_key_file = /etc/pki/tls/private/postfix.key|smtpd_tls_key_file = /etc/letsencrypt/live/www.$DOMAIN/privkey.pem|g" /etc/postfix/main.cf
 
     # Dovecot
-    sudo sed -i "s|ssl_cert = </etc/pki/dovecot/certs/dovecot.pem|ssl_cert = </etc/letsencrypt/live/mail.$DOMAIN/fullchain.pem|g" /etc/dovecot/conf.d/10-ssl.conf
-    sudo sed -i "s|ssl_key = </etc/pki/dovecot/private/dovecot.pem|ssl_key = </etc/letsencrypt/live/mail.$DOMAIN/privkey.pem|g" /etc/dovecot/conf.d/10-ssl.conf
+    sudo sed -i "s|ssl_cert = </etc/pki/dovecot/certs/dovecot.pem|ssl_cert = </etc/letsencrypt/live/www.$DOMAIN/fullchain.pem|g" /etc/dovecot/conf.d/10-ssl.conf
+    sudo sed -i "s|ssl_key = </etc/pki/dovecot/private/dovecot.pem|ssl_key = </etc/letsencrypt/live/www.$DOMAIN/privkey.pem|g" /etc/dovecot/conf.d/10-ssl.conf
 fi
 
 if [[ $DESK != 1 ]]; then
@@ -351,7 +352,6 @@ fi
 
 # Security
 # SELinux
-# TODO
 echo $SEP
 sudo setenforce 1
 sudo setsebool -P httpd_can_network_connect 1
@@ -366,9 +366,6 @@ if [[ $DESK != 1 ]]; then
     sudo semanage port -a -t ssh_port_t -p tcp $SSH_PORT
     echo "!!! If you don't want to use port 22 anymore, remember to delete it from SELinux !!!"
 fi
-
-# Firewalld
-# TODO
 
 # Fail2Ban
 # TODO
