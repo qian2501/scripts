@@ -28,7 +28,7 @@ OS=${OS%\"*}
 
 # Get package manager and package list from distro
 # OSs other than RHEL will exit fail as not supported
-if [ $OS = "rhel" ]; then
+if [[ $OS == "rhel" ]]; then
     PM=dnf
     PKGS="fail2ban"
 else
@@ -57,7 +57,7 @@ echo -e "(Y/N):\c"
 read MAIL
 if [[ $MAIL == 'y' || $MAIL == 'Y' ]]; then
     MAIL=1
-    PKGS=$PKGS" postfix dovecot opendkim opendkim-tools opendmarc spamassassin"
+    PKGS=$PKGS" postfix dovecot cyrus-sasl opendkim opendkim-tools opendmarc spamassassin"
 fi
 
 echo "Is this machine for development?"
@@ -94,7 +94,7 @@ fi
 
 
 # Register system
-if [ $OS = "rhel" ]; then
+if [[ $OS == "rhel" ]]; then
     echo $SEP
     sudo subscription-manager register
     sudo subscription-manager attach --auto
@@ -120,7 +120,7 @@ sudo $PM update -y
 sudo $PM install -y vim git zsh util-linux-user yum-utils policycoreutils-python-utils
 
 # Extra repos
-if [ $OS = "rhel" ]; then
+if [[ $OS == "rhel" ]]; then
     echo $SEP
 
     # EPEL
@@ -223,6 +223,12 @@ if [[ $WEB == 1 || $MAIL == 1 ]]; then
         sudo mv /home/site/roundcubemail/config/config.inc.php.sample /home/site/roundcubemail/config/config.inc.php
         sudo chown -R nginx:nginx /home/site/roundcubemail
         rm roundcubemail-$ROUNDCUBE_VERSION-complete.tar.gz
+
+        sudo mkdir /home/$NEWUSER/mail
+        sudo mkdir /home/$NEWUSER/mail/.imap
+        sudo touch /home/$NEWUSER/mail/inbox
+        sudo touch /home/$NEWUSER/mail/mbox
+        sudo chown -R $NEWUSER:$NEWUSER /home/$NEWUSER/mail
     fi
 
     # Nginx
@@ -289,7 +295,7 @@ if [[ $WEB == 1 || $MAIL == 1 ]]; then
         sudo systemctl stop postgresql
         sudo sed -i "s|mysql://roundcube:pass@localhost/roundcubemail|pgsql://roundcube:pass@127.0.0.1/roundcubemail|g" /home/site/roundcubemail/config/config.inc.php
 
-        echo "!!! Please replace your password for Roundcube DB and run \"bin/initdb.sh --dir=SQL\" after script finished !!!"
+        echo "!!! Please config \"config/config.inc.php\" and run \"bin/initdb.sh --dir=SQL\" after script finished !!!"
     fi
 
     if [[ $MAIL == 1 ]]; then
@@ -383,6 +389,7 @@ if [[ $MAIL == 1 ]]; then
     echo $SEP
     sudo systemctl enable --now postfix
     sudo systemctl enable --now dovecot
+    sudo systemctl enable --now saslauthd
 fi
 
 if [[ $DESK != 1 ]]; then
