@@ -8,11 +8,15 @@ ROUNDCUBE_VERSION=1.5.3
 
 SSH_PORT=22
 NEWUSER=user
-DB_USER=user
-DB_NAME=db
-DOMAIN=
+# Set to 0 if do not need swap
 SWAP_SIZE=1048576
 
+DB_USER=user
+DB_NAME=db
+
+# Leave blank if no domain name (local access only, no SSL)
+DOMAIN=
+# Will be used for git config and SSL cert request
 EMAIL_ADDRESS=someone@example.com
 
 
@@ -27,16 +31,16 @@ OS=${OS#*\"}
 OS=${OS%\"*}
 
 # Get package manager and package list from distro
-# OSs other than RHEL will exit fail as not supported
+# OSs other than RHEL will exit fail as not supported yet
 if [[ $OS == "rhel" ]]; then
     PM=dnf
-    PKGS="fail2ban"
+    PKGS=""
 else
     exit 1
 fi
 
 
-# Purpose specific settings
+# Purpose specify
 echo "Is this machine for web development or web server?"
 echo -e "(Y/N):\c"
 read WEB
@@ -57,7 +61,7 @@ echo -e "(Y/N):\c"
 read MAIL
 if [[ $MAIL == 'y' || $MAIL == 'Y' ]]; then
     MAIL=1
-    PKGS=$PKGS" postfix dovecot cyrus-sasl opendkim opendkim-tools opendmarc spamassassin"
+    PKGS=$PKGS" postfix dovecot cyrus-sasl opendkim opendkim-tools spamassassin"
 fi
 
 echo "Is this machine for development?"
@@ -72,7 +76,7 @@ echo -e "(Y/N):\c"
 read DESK
 if [[ $DESK == 'y' || $DESK == 'Y' ]]; then
     DESK=1
-    PKGS=$PKGS" code" # NOTE google-chrome-stable" Exclude until Google fix SHA1 signature
+    PKGS=$PKGS" code gnome-tweaks" # NOTE google-chrome-stable" Exclude until Google fix SHA1 signature
 fi
 
 if [[ $WEB == 1 || $MAIL == 1 ]]; then
@@ -215,6 +219,9 @@ if [[ $WEB == 1 || $MAIL == 1 ]]; then
         sudo mkdir /home/site
         sudo chown nginx:nginx /home/site
         sudo chmod 775 /home/site
+    elif [[ $DEV == 1 ]]; then
+        sudo usermod -aG $NEWUSER nginx
+        sudo chmod g+x /home/$NEWUSER
     fi
 
     if [[ $MAIL == 1 ]]; then
@@ -318,6 +325,11 @@ if [[ $WEB == 1 || $MAIL == 1 ]]; then
     fi
 fi
 
+if [[ $DEV == 1 ]]; then
+    git config --global user.name $NEWUSER
+    git config --global user.email $EMAIL_ADDRESS
+fi
+
 
 # SSL
 if [[ ($WEB == 1 || $MAIL == 1) && $DEV != 1 && $DESK != 1 ]]; then
@@ -372,9 +384,6 @@ if [[ $DESK != 1 ]]; then
     sudo semanage port -a -t ssh_port_t -p tcp $SSH_PORT
     echo "!!! If you don't want to use port 22 anymore, remember to delete it from SELinux !!!"
 fi
-
-# Fail2Ban
-# TODO
 
 
 # Service
