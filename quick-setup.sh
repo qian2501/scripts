@@ -54,6 +54,7 @@ echo -e "(Y/N):\c"
 read VPN
 if [[ $VPN == 'y' || $VPN == 'Y' ]]; then
     VPN=1
+    PKGS=$PKGS" docker-ce"
 fi
 
 echo "Is this machine for email server?"
@@ -61,7 +62,7 @@ echo -e "(Y/N):\c"
 read MAIL
 if [[ $MAIL == 'y' || $MAIL == 'Y' ]]; then
     MAIL=1
-    PKGS=$PKGS" postfix dovecot cyrus-sasl opendkim opendkim-tools spamassassin"
+    PKGS=$PKGS" postfix dovecot cyrus-sasl"
 fi
 
 echo "Is this machine for development?"
@@ -76,7 +77,7 @@ echo -e "(Y/N):\c"
 read DESK
 if [[ $DESK == 'y' || $DESK == 'Y' ]]; then
     DESK=1
-    PKGS=$PKGS" code gnome-tweaks" # NOTE google-chrome-stable" Exclude until Google fix SHA1 signature
+    PKGS=$PKGS" code gnome-tweaks google-chrome-stable"
 fi
 
 if [[ $WEB == 1 || $MAIL == 1 ]]; then
@@ -183,6 +184,12 @@ if [[ $WEB == 1 ]]; then
     php composer-setup.php
     php -r "unlink('composer-setup.php');"
     sudo mv composer.phar /usr/bin/composer
+fi
+
+if [[ $VPN == 1 ]]; then
+    # Outline
+    echo $SEP
+    sudo bash -c "$(wget -qO- https://raw.githubusercontent.com/Jigsaw-Code/outline-server/master/src/server_manager/install_scripts/install_server.sh)"
 fi
 
 if [[ $DEV == 1 ]]; then
@@ -316,10 +323,6 @@ if [[ $WEB == 1 || $MAIL == 1 ]]; then
         # Dovecot
         sudo sed -i "s|#protocols = imap pop3 lmtp submission|protocols = imap pop3 lmtp|g" /etc/dovecot/dovecot.conf
         sudo sed -i "s|#listen = \*, ::|listen = \*, ::|g" /etc/dovecot/dovecot.conf
-
-        # OpenDKIM
-        # TODO
-        sudo sed -i "s|Mode    v|Mode    sv|g" /etc/opendkim.conf
 
     fi
 fi
