@@ -195,11 +195,7 @@ if [[ $VPN == 1 ]]; then
 fi
 
 if [[ $DEV == 1 ]]; then
-    # Deployer
-    echo $SEP
-    curl -LO https://deployer.org/deployer.phar
-    sudo mv deployer.phar /usr/bin/dep
-    sudo chmod +x /usr/bin/dep
+
 fi
 
 if [[ $DESK == 1 ]]; then
