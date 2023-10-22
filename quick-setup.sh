@@ -35,6 +35,8 @@ OS=${OS%\"*}
 if [[ $OS == "rhel" ]]; then
     PM=dnf
     PKGS=""
+elif [[ $OS == "opensuse-leap" ]]; then
+    exit 1
 else
     exit 1
 fi
