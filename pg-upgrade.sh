@@ -2,8 +2,8 @@
 
 # Var
 SEP=----------
-OLDVER=13
-NEWVER=14
+OLDVER=14
+NEWVER=15
 
 # Get distro name
 OS=$(awk -F'=' '/^ID=/ {print tolower($2)}' /etc/*-release)
