@@ -2,11 +2,11 @@
 
 VERSION=15.5
 
-zypper refresh
-zypper update
+sudo zypper refresh
+sudo zypper update
 
-#sed -i 's/15.4/${releasever}/g' /etc/zypp/repos.d/*.repo
+#sudo sed -i 's/15.4/${releasever}/g' /etc/zypp/repos.d/*.repo
 
-zypper --releasever=15.5 refresh
+sudo zypper --releasever=15.5 refresh
 
-zypper --releasever=15.5 dup --download-in-heaps
+sudo zypper --releasever=15.5 dup --download-in-heaps
